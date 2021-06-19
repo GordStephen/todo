@@ -21,9 +21,19 @@ fi
 # Process arguments
 if [ "$#" -eq 0 ]; then
 
-    echo 'summary not yet implemented'
-    exit 1
-    # TODO: Have some kind of listing of ordered categories (today, this week, this month, someday)
+    for dir in "today" "thisweek" "thismonth" "someday"; do
+        if [ -d "$TODODIR/$dir" ]; then
+            echo "$dir:"
+            ls "$TODODIR/$dir/"
+            echo "\n"
+        fi
+    done
+
+elif [ "$1" = "init" ]; then
+
+    for dir in "today" "thisweek" "thismonth" "someday"; do
+        [ -e "$TODODIR/$dir" ] || mkdir "$TODODIR/$dir"
+    done
 
 elif [ "$1" = "add" ]; then
 
