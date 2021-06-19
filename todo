@@ -1,0 +1,125 @@
+#! /usr/bin/env sh
+
+EDITOR=kak
+
+# Set up todo directory if needed
+
+if [ -z "$TODODIR" ]; then
+    TODODIR="$HOME/.todo"
+fi
+
+if [ -e "$TODODIR" ]; then
+    if [ ! -d "$TODODIR" ]; then
+        echo "$TODODIR is not a directory"
+        exit 1
+    fi
+else
+    mkdir -p "$TODODIR"
+fi
+
+
+# Process arguments
+if [ "$#" -eq 0 ]; then
+
+    echo 'summary not yet implemented'
+    exit 1
+    # TODO: Have some kind of listing of ordered categories (today, this week, this month, someday)
+
+elif [ "$1" = "add" ]; then
+
+    # Make sure $2 doesn't exist
+    if [ -e "$TODODIR/$2" ]; then
+        echo "'$2' already exists"
+        exit 1
+    else
+        touch "$TODODIR/$2"
+    fi
+
+elif [ "$1" = "mkdir" ]; then
+
+    # Make sure $2 doesn't exist
+    if [ -e "$TODODIR/$2" ]; then
+        echo "'$2' already exists"
+        exit 1
+    else
+        mkdir -p "$TODODIR/$2"
+    fi
+
+elif [ "$1" = "hide" ]; then
+
+    echo "'hide' not yet implemented"
+    exit 1
+
+    # Make sure $2 exists
+    if [ ! -e "$TODODIR/$2" ]; then
+        echo "'$2' does not exist"
+        exit 1
+    #else
+        # TODO: Need to move file and update symbolic links
+        #find -L "$TODODIR" -samefile "$TODODIR/$2" -execdir mv '{}' '.''{}' \;
+        #find -L "$TODODIR" -samefile "$TODODIR/$2" -delete
+        #find -L "$TODODIR" -samefile "$TODODIR/$2" -execdir echo '{}' \;
+        # -lname '$TODODIR/$2'
+    fi
+
+elif [ "$1" = "rm" ]; then
+
+    # Make sure $2 exists
+    if [ ! -e "$TODODIR/$2" ]; then
+        echo "'$2' does not exist"
+        exit 1
+    else
+        # TODO: Decide how to handle symbolic links
+        #find -L "$TODODIR" -samefile "$TODODIR/$2" -execdir rm '{}' \;
+        rm "$TODODIR/$2"
+    fi
+
+elif [ "$1" = "edit" ]; then
+
+    $EDITOR "$TODODIR/$2"
+
+elif [ "$1" = "mv" ]; then
+
+    # Make sure $2 exists
+    if [ ! -e "$TODODIR/$2" ]; then
+        echo "'$2' does not exist"
+        exit 1
+
+    # Make sure $3 is a directory
+    elif [ ! -d "$TODODIR/$3" ]; then
+        echo "'$3' is not a directory"
+        exit 1
+
+    else
+        # TODO: Need to update symbolic links
+        mv "$TODODIR/$2" "$TODODIR/$3/"
+    fi
+
+elif [ "$1" = "assign" ]; then
+
+    # Make sure $2 exists
+    if [ ! -e "$TODODIR/$2" ]; then
+        echo "'$2' does not exist"
+        exit 1
+
+    # Make sure $3 is a directory
+    elif [ ! -d "$TODODIR/$3" ]; then
+        echo "'$3' is not a directory"
+        exit 1
+
+    else
+        ln -s "$TODODIR/$2" "$TODODIR/$3/"
+    fi
+
+else
+
+    if [ -f "$TODODIR/$1" ]; then
+        less "$TODODIR/$1"
+    elif [ -d "$TODODIR/$1" ]; then
+        ls "$TODODIR/$1/"
+    else
+        echo "$1 is not a file or directory"
+        exit 1
+    fi
+
+fi
