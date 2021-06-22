@@ -1,6 +1,10 @@
 #! /usr/bin/env sh
 
-EDITOR=kak
+# Set up $EDITOR if needed
+
+if [ -z "$EDITOR" ]; then
+    EDITOR="nano"
+fi
 
 # Set up todo directory if needed
 
@@ -14,45 +18,50 @@ if [ -e "$TODODIR" ]; then
         exit 1
     fi
 else
-    mkdir -p "$TODODIR"
+    mkdir -p "$TODODIR/tasks"
+    mkdir -p "$TODODIR/times"
 fi
-
 
 # Process arguments
 if [ "$#" -eq 0 ]; then
 
-    for dir in "today" "thisweek" "thismonth" "someday"; do
-        if [ -d "$TODODIR/$dir" ]; then
-            echo "$dir:"
-            ls "$TODODIR/$dir/"
-            echo "\n"
+    for dir in "waiting" "today" "thisweek" "thismonth"; do
+        # TODO: Skip directory if exists but empty
+        if [ -d "$TODODIR/times/$dir" ]; then
+            printf "\033[1m%s\033[m\n" $dir
+            ls -1 "$TODODIR/times/$dir/"
+            printf "\n"
         fi
     done
 
+elif [ "$1" = "tasks" ]; then
+
+    tree $TODODIR/tasks
+
 elif [ "$1" = "init" ]; then
 
-    for dir in "today" "thisweek" "thismonth" "someday"; do
-        [ -e "$TODODIR/$dir" ] || mkdir "$TODODIR/$dir"
+    for dir in "waiting" "today" "thisweek" "thismonth" "someday"; do
+        [ -e "$TODODIR/times/$dir" ] || mkdir "$TODODIR/times/$dir"
     done
 
 elif [ "$1" = "add" ]; then
 
     # Make sure $2 doesn't exist
-    if [ -e "$TODODIR/$2" ]; then
+    if [ -e "$TODODIR/tasks/$2" ]; then
         echo "'$2' already exists"
         exit 1
     else
-        touch "$TODODIR/$2"
+        touch "$TODODIR/tasks/$2"
     fi
 
-elif [ "$1" = "mkdir" ]; then
+elif [ "$1" = "addproject" ]; then
 
     # Make sure $2 doesn't exist
-    if [ -e "$TODODIR/$2" ]; then
+    if [ -e "$TODODIR/tasks/$2" ]; then
         echo "'$2' already exists"
         exit 1
     else
-        mkdir -p "$TODODIR/$2"
+        mkdir -p "$TODODIR/tasks/$2"
     fi
 
 elif [ "$1" = "hide" ]; then
@@ -75,58 +84,67 @@ elif [ "$1" = "hide" ]; then
 elif [ "$1" = "rm" ]; then
 
     # Make sure $2 exists
-    if [ ! -e "$TODODIR/$2" ]; then
-        echo "'$2' does not exist"
+    if [ ! -f "$TODODIR/tasks/$2" ]; then
+        echo "'$2' is not a file or does not exist"
         exit 1
     else
-        # TODO: Decide how to handle symbolic links
-        #find -L "$TODODIR" -samefile "$TODODIR/$2" -execdir rm '{}' \;
-        rm "$TODODIR/$2"
+        find -L "$TODODIR/times" -samefile "$TODODIR/tasks/$2" -delete
+        rm "$TODODIR/tasks/$2"
     fi
 
 elif [ "$1" = "edit" ]; then
 
-    $EDITOR "$TODODIR/$2"
+    if [ -f "$TODODIR/tasks/$2" ]; then
+        $EDITOR "$TODODIR/tasks/$2"
+    elif [ -f "$TODODIR/times/$2" ]; then
+        $EDITOR "$TODODIR/times/$2"
+    else
+        echo "$2 is not a file"
+        exit 1
+    fi
 
 elif [ "$1" = "mv" ]; then
 
     # Make sure $2 exists
-    if [ ! -e "$TODODIR/$2" ]; then
+    if [ ! -e "$TODODIR/tasks/$2" ]; then
         echo "'$2' does not exist"
         exit 1
 
     # Make sure $3 is a directory
-    elif [ ! -d "$TODODIR/$3" ]; then
+    elif [ ! -d "$TODODIR/tasks/$3" ]; then
         echo "'$3' is not a directory"
         exit 1
 
-    else
-        # TODO: Need to update symbolic links
-        mv "$TODODIR/$2" "$TODODIR/$3/"
     fi
+
+    # TODO: Remove existing symbolic links and recreate for new location
+    mv "$TODODIR/tasks/$2" "$TODODIR/tasks/$3/"
 
 elif [ "$1" = "assign" ]; then
 
     # Make sure $2 exists
-    if [ ! -e "$TODODIR/$2" ]; then
+    if [ ! -e "$TODODIR/tasks/$2" ]; then
         echo "'$2' does not exist"
         exit 1
-
     # Make sure $3 is a directory
-    elif [ ! -d "$TODODIR/$3" ]; then
+    elif [ ! -d "$TODODIR/times/$3" ]; then
         echo "'$3' is not a directory"
         exit 1
-
-    else
-        ln -s "$TODODIR/$2" "$TODODIR/$3/"
     fi
+
+    find -L "$TODODIR/times" -samefile "$TODODIR/tasks/$2" -delete
+    ln -s "$TODODIR/tasks/$2" "$TODODIR/times/$3/"
 
 else
 
-    if [ -f "$TODODIR/$1" ]; then
-        less "$TODODIR/$1"
-    elif [ -d "$TODODIR/$1" ]; then
-        ls "$TODODIR/$1/"
+    if [ -f "$TODODIR/tasks/$1" ]; then
+        less "$TODODIR/tasks/$1"
+    elif [ -f "$TODODIR/times/$1" ]; then
+        less "$TODODIR/times/$1"
+    elif [ -d "$TODODIR/tasks/$1" ]; then
+        ls -1 "$TODODIR/tasks/$1/"
+    elif [ -d "$TODODIR/times/$1" ]; then
+        ls -1 "$TODODIR/times/$1/"
     else
         echo "$1 is not a file or directory"
         exit 1
