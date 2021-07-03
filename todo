@@ -1,5 +1,22 @@
 #! /usr/bin/env sh
 
+# todo
+# todo init
+# todo tasks
+# todo times
+# todo add <task>
+# todo addproject <project>
+# todo addtime <time>
+# todo hide <task>
+# todo rm <task>
+# todo rmproject <project>
+# todo rmtime <time>
+# todo edit <task>
+# todo assign <task> <time>
+# todo unassign <task>
+# todo mv <task> <project>
+
+
 # Set up $EDITOR if needed
 
 if [ -z "$EDITOR" ]; then
@@ -23,20 +40,17 @@ else
 fi
 
 # Process arguments
+
 if [ "$#" -eq 0 ]; then
 
     for dir in "waiting" "today" "thisweek" "thismonth"; do
-        # TODO: Skip directory if exists but empty
-        if [ -d "$TODODIR/times/$dir" ]; then
+        dirpath="$TODODIR/times/$dir"
+        if [ -d $dirpath ] && [ ! -z $(ls -A $dirpath) ]; then
             printf "\033[1m%s\033[m\n" $dir
-            ls -1 "$TODODIR/times/$dir/"
+            find $dirpath -type l -execdir realpath --relative-to="$TODODIR/tasks" '{}' +
             printf "\n"
         fi
     done
-
-elif [ "$1" = "tasks" ]; then
-
-    tree $TODODIR/tasks
 
 elif [ "$1" = "init" ]; then
 
@@ -44,53 +58,101 @@ elif [ "$1" = "init" ]; then
         [ -e "$TODODIR/times/$dir" ] || mkdir "$TODODIR/times/$dir"
     done
 
+elif [ "$1" = "tasks" ]; then
+
+    tree $TODODIR/tasks
+
+elif [ "$1" = "times" ]; then
+
+    tree $TODODIR/times
+
 elif [ "$1" = "add" ]; then
 
+    taskpath="$TODODIR/tasks/$2"
+
     # Make sure $2 doesn't exist
-    if [ -e "$TODODIR/tasks/$2" ]; then
+    if [ -e $taskpath ]; then
         echo "'$2' already exists"
         exit 1
-    else
-        touch "$TODODIR/tasks/$2"
     fi
+
+    touch $taskpath
 
 elif [ "$1" = "addproject" ]; then
 
+    projectpath="$TODODIR/tasks/$2"
+
     # Make sure $2 doesn't exist
-    if [ -e "$TODODIR/tasks/$2" ]; then
+    if [ -e $projectpath ]; then
         echo "'$2' already exists"
         exit 1
-    else
-        mkdir -p "$TODODIR/tasks/$2"
     fi
+
+    mkdir -p $projectpath
+
+elif [ "$1" = "addtime" ]; then
+
+    timepath="$TODODIR/times/$2"
+
+    # Make sure $2 doesn't exist
+    if [ -e $timepath ]; then
+        echo "'$2' already exists"
+        exit 1
+    fi
+
+    mkdir -p $timepath
 
 elif [ "$1" = "hide" ]; then
 
-    echo "'hide' not yet implemented"
-    exit 1
+    taskpath="$TODODIR/tasks/$2"
+    taskdir=$(dirname $taskpath)
+    taskname=$(basename $taskpath)
 
     # Make sure $2 exists
-    if [ ! -e "$TODODIR/$2" ]; then
+    if [ ! -e $taskpath ]; then
         echo "'$2' does not exist"
         exit 1
-    #else
-        # TODO: Need to move file and update symbolic links
-        #find -L "$TODODIR" -samefile "$TODODIR/$2" -execdir mv '{}' '.''{}' \;
-        #find -L "$TODODIR" -samefile "$TODODIR/$2" -delete
-        #find -L "$TODODIR" -samefile "$TODODIR/$2" -execdir echo '{}' \;
-        # -lname '$TODODIR/$2'
     fi
+
+    find -L "$TODODIR/times" -samefile $taskpath -delete
+    mv $taskpath "$taskdir/.$taskname"
 
 elif [ "$1" = "rm" ]; then
 
+    taskpath="$TODODIR/tasks/$2"
+
     # Make sure $2 exists
-    if [ ! -f "$TODODIR/tasks/$2" ]; then
+    if [ ! -f $taskpath ]; then
         echo "'$2' is not a file or does not exist"
         exit 1
-    else
-        find -L "$TODODIR/times" -samefile "$TODODIR/tasks/$2" -delete
-        rm "$TODODIR/tasks/$2"
     fi
+
+    find -L "$TODODIR/times" -samefile $taskpath -delete
+    rm $taskpath
+
+elif [ "$1" = "rmproject" ]; then
+
+    projectpath="$TODODIR/tasks/$2"
+
+    # Make sure $2 exists
+    if [ ! -d $projectpath ]; then
+        echo "'$2' is not a directory or does not exist"
+        exit 1
+    fi
+
+    rmdir $projectpath
+
+elif [ "$1" = "rmtime" ]; then
+
+    timepath="$TODODIR/times/$2"
+
+    # Make sure $2 exists
+    if [ ! -d $timepath ]; then
+        echo "'$2' is not a directory or does not exist"
+        exit 1
+    fi
+
+    rmdir $timepath
 
 elif [ "$1" = "edit" ]; then
 
@@ -105,8 +167,12 @@ elif [ "$1" = "edit" ]; then
 
 elif [ "$1" = "mv" ]; then
 
-    # Make sure $2 exists
-    if [ ! -e "$TODODIR/tasks/$2" ]; then
+    taskpath="$TODODIR/tasks/$2"
+    taskname=$(basename $taskpath)
+    newtaskpath="$TODODIR/tasks/$3/$taskname"
+
+    # Make sure task exists
+    if [ ! -e $taskpath ]; then
         echo "'$2' does not exist"
         exit 1
 
@@ -117,23 +183,39 @@ elif [ "$1" = "mv" ]; then
 
     fi
 
-    # TODO: Remove existing symbolic links and recreate for new location
-    mv "$TODODIR/tasks/$2" "$TODODIR/tasks/$3/"
+    find -L "$TODODIR/times" -samefile $taskpath -delete -execdir ln -s $newtaskpath \;
+    mv $taskpath $newtaskpath
 
 elif [ "$1" = "assign" ]; then
 
+    taskpath="$TODODIR/tasks/$2"
+    newtime="$TODODIR/times/$3"
+
     # Make sure $2 exists
-    if [ ! -e "$TODODIR/tasks/$2" ]; then
+    if [ ! -e $taskpath ]; then
         echo "'$2' does not exist"
         exit 1
+
     # Make sure $3 is a directory
-    elif [ ! -d "$TODODIR/times/$3" ]; then
+    elif [ ! -d $newtime ]; then
         echo "'$3' is not a directory"
         exit 1
     fi
 
-    find -L "$TODODIR/times" -samefile "$TODODIR/tasks/$2" -delete
-    ln -s "$TODODIR/tasks/$2" "$TODODIR/times/$3/"
+    find -L "$TODODIR/times" -samefile $taskpath -delete
+    ln -s $taskpath $newtime"/"
+
+elif [ "$1" = "unassign" ]; then
+
+    taskpath="$TODODIR/tasks/$2"
+
+    # Make sure $2 exists
+    if [ ! -f $taskpath ]; then
+        echo "'$2' is not a file or does not exist"
+        exit 1
+    fi
+
+    find -L "$TODODIR/times" -samefile $taskpath -delete
 
 else
 
