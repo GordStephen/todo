@@ -1,6 +1,7 @@
 #! /usr/bin/env sh
 
 # todo
+# todo dir
 # todo init
 # todo tasks
 # todo times
@@ -51,6 +52,10 @@ if [ "$#" -eq 0 ]; then
             printf "\n"
         fi
     done
+
+elif [ "$1" = "dir" ]; then
+
+    echo $TODODIR
 
 elif [ "$1" = "init" ]; then
 
